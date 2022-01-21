@@ -30,6 +30,7 @@ import com.yanzhenjie.andserver.framework.ExceptionResolver;
 import com.yanzhenjie.andserver.framework.HandlerInterceptor;
 import com.yanzhenjie.andserver.framework.MessageConverter;
 import com.yanzhenjie.andserver.framework.ModifiedInterceptor;
+import com.yanzhenjie.andserver.framework.body.FileBody;
 import com.yanzhenjie.andserver.framework.body.StreamBody;
 import com.yanzhenjie.andserver.framework.body.StringBody;
 import com.yanzhenjie.andserver.framework.config.Multipart;
@@ -39,6 +40,7 @@ import com.yanzhenjie.andserver.framework.view.View;
 import com.yanzhenjie.andserver.framework.view.ViewResolver;
 import com.yanzhenjie.andserver.handler.DefaultHandler;
 import com.yanzhenjie.andserver.handler.DocDeleteHandler;
+import com.yanzhenjie.andserver.handler.DocDownloadHandler;
 import com.yanzhenjie.andserver.handler.DocListHandler;
 import com.yanzhenjie.andserver.handler.DocUploadHandler;
 import com.yanzhenjie.andserver.handler.DocViewHandler;
@@ -81,6 +83,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -171,6 +174,35 @@ public class DispatcherHandler implements HttpRequestHandler, Register {
         abstractHandler.handle(request, response);
     }
 
+    private void handle5(HttpRequest request, HttpResponse response){
+        String fileName = "http-core-docs.jar";
+        List<File> files = files();
+        File file = files.stream().filter(f -> f.getName().equals(fileName)).findFirst().orElse(null);
+        List<String> entryList = null;
+        if(Objects.nonNull(file)){
+            try{
+                ZipFile zipFile = new ZipFile(file);
+                entryList = ZipUtil.entryList(zipFile);
+                entryList.add(file.getAbsolutePath());
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        List<String> datas = new ArrayList<>();
+        try {
+            baos.write(prefix().getBytes());
+            datas.addAll(entryList);
+            baos.write(lines(datas).getBytes());
+            baos.write(ends().getBytes());
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            response.setStatus(200);
+            response.setBody(new StreamBody(bais, baos.toByteArray().length, MediaType.TEXT_HTML));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void handle4(HttpRequest request, HttpResponse response){
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         List<String> datas = new ArrayList<>();
@@ -194,12 +226,14 @@ public class DispatcherHandler implements HttpRequestHandler, Register {
         DocListHandler docListHandler = new DocListHandler(mContext);
         DocViewHandler docViewHandler = new DocViewHandler(mContext);
         DocUploadHandler docUploadHandler = new DocUploadHandler(mContext);
+        DocDownloadHandler docDownloadHandler = new DocDownloadHandler(mContext);
         DocDeleteHandler docDeleteHandler = new DocDeleteHandler(mContext);
 //        IcoHandler icoHandler = new IcoHandler();
         HandlerFactory.register("default", (DispatcherHandler)defaultHandler);
         HandlerFactory.register("doc-list", (DispatcherHandler)docListHandler);
         HandlerFactory.register("doc-view", (DispatcherHandler)docViewHandler);
         HandlerFactory.register("doc-upload", (DispatcherHandler)docUploadHandler);
+        HandlerFactory.register("doc-download", (DispatcherHandler)docDownloadHandler);
         HandlerFactory.register("doc-delete", (DispatcherHandler)docDeleteHandler);
 //        HandlerFactory.register("favicon.ico", (DispatcherHandler)icoHandler);
     }

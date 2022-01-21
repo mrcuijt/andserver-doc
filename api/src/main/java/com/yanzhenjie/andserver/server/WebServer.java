@@ -45,7 +45,7 @@ public class WebServer extends BasicServer<WebServer.Builder> {
     @Override
     protected HttpRequestHandler requestHandler() {
         DispatcherHandler.registHandler(mContext);
-        WebDocConfig.setBasePath("manga");
+        //WebDocConfig.setBasePath("manga");
         DispatcherHandler handler = new DispatcherHandler(mContext);
         ComponentRegister register = new ComponentRegister(mContext);
         try {

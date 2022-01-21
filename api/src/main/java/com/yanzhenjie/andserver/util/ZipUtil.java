@@ -83,6 +83,29 @@ public class ZipUtil {
         return (arrayList.size() == 0) ? Collections.<String>emptyList() : arrayList;
     }
 
+    public static List<String> entryList(ZipFile zipFile) {
+        ArrayList<String> arrayList = new ArrayList();
+        try {
+            Iterator<ZipEntry> iterator = iterator(zipFile);
+            if (iterator == null)
+                return (List)Collections.emptyList();
+            while (iterator.hasNext()) {
+                ZipEntry zipEntry = iterator.next();
+                arrayList.add(zipEntry.getName());
+            }
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        } finally {
+            try {
+                if (zipFile != null)
+                    zipFile.close();
+            } catch (IOException iOException) {
+                iOException.printStackTrace();
+            }
+        }
+        return (arrayList.size() == 0) ? Collections.<String>emptyList() : arrayList;
+    }
+
     public static InputStream getResource(ZipFile paramZipFile, String paramString) {
         InputStream inputStream = new ByteArrayInputStream(new byte[0]);
         try {

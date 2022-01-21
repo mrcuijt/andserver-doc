@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Calendar;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import static com.yanzhenjie.andserver.http.HttpHeaders.LOCATION;
@@ -105,7 +107,7 @@ public class DocViewHandler extends DispatcherHandler {
 
     public static void writeResource(HttpResponse response, String path, String entryName) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ZipInputStream zis = new ZipInputStream(new FileInputStream(new File(path)));
+        /*ZipInputStream zis = new ZipInputStream(new FileInputStream(new File(path)));
         ZipEntry entry = null;
         byte[] buffer = new byte[1024];
         int len = -1;
@@ -116,6 +118,12 @@ public class DocViewHandler extends DispatcherHandler {
                 }
                 break;
             }
+        }*/
+        int len = -1;
+        byte[] buffer = new byte[1024];
+        InputStream is = ZipUtil.getResource(new ZipFile(new File(path)), entryName);
+        while((len = is.read(buffer, 0, buffer.length)) != -1){
+            baos.write(buffer, 0, len);
         }
         ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
         response.setBody(new StreamBody(bais, baos.toByteArray().length));

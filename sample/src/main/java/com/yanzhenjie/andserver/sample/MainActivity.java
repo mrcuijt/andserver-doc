@@ -18,9 +18,11 @@ package com.yanzhenjie.andserver.sample;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +30,8 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.lzf.easyfloat.EasyFloat;
 import com.lzf.easyfloat.enums.ShowPattern;
+import com.yanzhenjie.andserver.config.WebDocConfig;
+import com.yanzhenjie.andserver.framework.config.WebConfig;
 import com.yanzhenjie.andserver.sample.manager.SimpleServerManager;
 import com.yanzhenjie.loading.dialog.LoadingDialog;
 
@@ -44,7 +48,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button mBtnStart;
     private Button mBtnStop;
     private Button mBtnBrowser;
+    private Button mBtnUpdate;
     private TextView mTvMessage;
+    private EditText mEtDocFolder;
+
 
     private LoadingDialog mDialog;
     private String mRootUrl;
@@ -60,10 +67,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mBtnStop = findViewById(R.id.btn_stop);
         mBtnBrowser = findViewById(R.id.btn_browse);
         mTvMessage = findViewById(R.id.tv_message);
+        mEtDocFolder = findViewById(R.id.itext_doc_folder);
+        mBtnUpdate = findViewById(R.id.btn_update);
 
         mBtnStart.setOnClickListener(this);
         mBtnStop.setOnClickListener(this);
         mBtnBrowser.setOnClickListener(this);
+        mBtnUpdate.setOnClickListener(this);
 
         // AndServer run in the service.
         mServerManager = new ServerManager(this);
@@ -102,6 +112,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     intent.setData(Uri.parse(mRootUrl));
                     startActivity(intent);
                 }
+                break;
+            }
+            case R.id.btn_update: {
+                WebDocConfig.setBasePath(getDocFolder());
                 break;
             }
         }
@@ -150,6 +164,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mBtnStop.setVisibility(View.GONE);
         mBtnBrowser.setVisibility(View.GONE);
         mTvMessage.setText(R.string.server_stop_succeed);
+    }
+
+    public String getDocFolder(){
+        return mEtDocFolder.getText().toString();
     }
 
     private void showDialog() {
