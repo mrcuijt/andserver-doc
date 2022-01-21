@@ -17,6 +17,23 @@ android {
         versionName androidBuild.versionName
     }
 
+    signingConfigs{
+        config{
+            storeFile file(KEY_PATH)  //keystore的位置
+            storePassword KEY_PASS   //密码
+            keyAlias ALIAS_NAME  //别名
+            keyPassword ALIAT_PASS  //别名密码
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
