@@ -27,6 +27,7 @@ import com.yanzhenjie.andserver.framework.ExceptionResolver;
 import com.yanzhenjie.andserver.framework.HandlerInterceptor;
 import com.yanzhenjie.andserver.framework.MessageConverter;
 import com.yanzhenjie.andserver.framework.ModifiedInterceptor;
+import com.yanzhenjie.andserver.framework.body.StreamBody;
 import com.yanzhenjie.andserver.framework.body.StringBody;
 import com.yanzhenjie.andserver.framework.config.Multipart;
 import com.yanzhenjie.andserver.framework.handler.HandlerAdapter;
@@ -51,11 +52,14 @@ import com.yanzhenjie.andserver.http.session.SessionManager;
 import com.yanzhenjie.andserver.http.session.StandardSessionManager;
 import com.yanzhenjie.andserver.register.Register;
 import com.yanzhenjie.andserver.util.Assert;
+import com.yanzhenjie.andserver.util.MediaType;
 
 import org.apache.httpcore.protocol.HttpRequestHandler;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -129,51 +133,76 @@ public class DispatcherHandler implements HttpRequestHandler, Register {
     }
 
     private void handle(HttpRequest request, HttpResponse response) {
-        MultipartResolver multipartResolver = new StandardMultipartResolver();
-        try {
-            if (multipartResolver.isMultipart(request)) {
-                configMultipart(multipartResolver);
-                request = multipartResolver.resolveMultipart(request);
-            }
-
-            // Determine adapter for the current request.
-            HandlerAdapter ha = getHandlerAdapter(request);
-            if (ha == null) {
-                throw new NotFoundException(request.getPath());
-            }
-
-            // Determine handler for the current request.
-            RequestHandler handler = ha.getHandler(request);
-            if (handler == null) {
-                throw new NotFoundException(request.getPath());
-            }
-
-            // Pre processor, e.g. interceptor.
-            if (preHandle(request, response, handler)) {
-                return;
-            }
-
-            // Actually invoke the handler.
-            request.setAttribute(HttpContext.ANDROID_CONTEXT, mContext);
-            request.setAttribute(HttpContext.HTTP_MESSAGE_CONVERTER, mConverter);
-            View view = handler.handle(request, response);
-            mViewResolver.resolve(view, request, response);
-            processSession(request, response);
-        } catch (Throwable err) {
-            try {
-                mResolver.onResolve(request, response, err);
-            } catch (Exception e) {
-                e = new ServerInternalException(e);
-                response.setStatus(StatusCode.SC_INTERNAL_SERVER_ERROR);
-                response.setBody(new StringBody(e.getMessage()));
-            }
-            processSession(request, response);
-        } finally {
-            if (request instanceof MultipartRequest) {
-                multipartResolver.cleanupMultipart((MultipartRequest) request);
-            }
-        }
+        StringBuffer stringBuffer = new StringBuffer();
+        //response.setContentType("text/html; charset=utf-8");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write();
+        response.setStatus(200);
+        response.setBody(new StreamBody(, MediaType.TEXT_HTML));
+        printWriter.println("<!DOCTYPE html>");
+        printWriter.println("<html>");
+        printWriter.println("<head>");
+        printWriter.println("<meta charset=\"UTF-8\">");
+        printWriter.println("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
+        printWriter.println("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,Chrome=1\" />");
+        printWriter.println("<title>Index</title>");
+        printWriter.println("</head>");
+        printWriter.println("<body>");
+        printWriter.println("<h3>Active Handler:</h3>");
+        printWriter.println("  <ul>");
+        printWriter.print(stringBuffer.toString());
+        printWriter.println("  </ul>");
+        printWriter.println("</body>");
+        printWriter.println("</html>");
     }
+
+
+//    private void handle(HttpRequest request, HttpResponse response) {
+//        MultipartResolver multipartResolver = new StandardMultipartResolver();
+//        try {
+//            if (multipartResolver.isMultipart(request)) {
+//                configMultipart(multipartResolver);
+//                request = multipartResolver.resolveMultipart(request);
+//            }
+//
+//            // Determine adapter for the current request.
+//            HandlerAdapter ha = getHandlerAdapter(request);
+//            if (ha == null) {
+//                throw new NotFoundException(request.getPath());
+//            }
+//
+//            // Determine handler for the current request.
+//            RequestHandler handler = ha.getHandler(request);
+//            if (handler == null) {
+//                throw new NotFoundException(request.getPath());
+//            }
+//
+//            // Pre processor, e.g. interceptor.
+//            if (preHandle(request, response, handler)) {
+//                return;
+//            }
+//
+//            // Actually invoke the handler.
+//            request.setAttribute(HttpContext.ANDROID_CONTEXT, mContext);
+//            request.setAttribute(HttpContext.HTTP_MESSAGE_CONVERTER, mConverter);
+//            View view = handler.handle(request, response);
+//            mViewResolver.resolve(view, request, response);
+//            processSession(request, response);
+//        } catch (Throwable err) {
+//            try {
+//                mResolver.onResolve(request, response, err);
+//            } catch (Exception e) {
+//                e = new ServerInternalException(e);
+//                response.setStatus(StatusCode.SC_INTERNAL_SERVER_ERROR);
+//                response.setBody(new StringBody(e.getMessage()));
+//            }
+//            processSession(request, response);
+//        } finally {
+//            if (request instanceof MultipartRequest) {
+//                multipartResolver.cleanupMultipart((MultipartRequest) request);
+//            }
+//        }
+//    }
 
     private void configMultipart(MultipartResolver multipartResolver) {
         if (mMultipart != null) {
