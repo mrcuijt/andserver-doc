@@ -1,4 +1,4 @@
-package com.yanzhenjie.andserver.sample.util;
+package com.yanzhenjie.andserver.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -35,6 +35,29 @@ public class ZipUtil {
         return (Enumeration)enumeration;
     }
 
+    public static List<String> entryList2(String paramString){
+        ZipFile zipFile = null;
+        ArrayList<String> arrayList = new ArrayList();
+        try {
+            zipFile = getZipFile(paramString);
+            Enumeration<ZipEntry> entries = entries(zipFile);
+            while (entries.hasMoreElements()){
+                ZipEntry zipEntry = entries.nextElement();
+                arrayList.add(zipEntry.getName());
+            }
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        } finally {
+            try {
+                if (zipFile != null)
+                    zipFile.close();
+            } catch (IOException iOException) {
+                iOException.printStackTrace();
+            }
+        }
+        return (arrayList.size() == 0) ? Collections.<String>emptyList() : arrayList;
+    }
+
     public static List<String> entryList(String paramString) {
         ZipFile zipFile = null;
         ArrayList<String> arrayList = new ArrayList();
@@ -64,6 +87,16 @@ public class ZipUtil {
         InputStream inputStream = new ByteArrayInputStream(new byte[0]);
         try {
             ZipEntry zipEntry = paramZipFile.getEntry(paramString);
+            inputStream = paramZipFile.getInputStream(zipEntry);
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        }
+        return inputStream;
+    }
+
+    public static InputStream getResource(ZipFile paramZipFile, ZipEntry zipEntry) {
+        InputStream inputStream = new ByteArrayInputStream(new byte[0]);
+        try {
             inputStream = paramZipFile.getInputStream(zipEntry);
         } catch (Exception exception) {
             exception.printStackTrace();

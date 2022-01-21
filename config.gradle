@@ -15,10 +15,10 @@ ext {
         compileSdkVersion      : 29,
         buildToolsVersion      : '29.0.3',
 
-        libraryMinSdkVersion   : 9,
+        libraryMinSdkVersion   : 24,
         libraryTargetSdkVersion: 29,
-        sampleMinSdkVersion    : 14,
-        sampleTargetSdkVersion : 22,
+        sampleMinSdkVersion    : 24,
+        sampleTargetSdkVersion : 24,
 
         versionCode            : 25,
         versionName            : '2.1.2'
@@ -39,8 +39,9 @@ ext {
             fileupload : "com.yanzhenjie.apache:fileupload:1.4",
         ],
 
-        poet   : 'com.squareup:javapoet:1.12.1',
-        loading: 'com.yanzhenjie:loading:1.0.0',
-        json   : 'com.alibaba:fastjson:1.1.71.android'
+        poet       : 'com.squareup:javapoet:1.12.1',
+        loading    : 'com.yanzhenjie:loading:1.0.0',
+        json       : 'com.alibaba:fastjson:1.1.71.android',
+        easyfloat  : 'com.github.princekin-f:EasyFloat:2.0.2'
     ]
 }

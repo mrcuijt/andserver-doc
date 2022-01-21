@@ -1,4 +1,4 @@
-package com.yanzhenjie.andserver.sample.util;
+package com.yanzhenjie.andserver.util;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -354,5 +354,15 @@ public class MimeTypeUtil {
         map.put(".xap","application/x-silverlight-app");
     }
 
-    public static String getMimeTypeForExtends
+    private static final String APPLICATION_OCTET_STREAM = "application/octet-stream";
+
+    public static String getMimeTypeForExtension(String extension){
+        if(null == extension){
+            return map.get(APPLICATION_OCTET_STREAM);
+        }
+        if(!extension.startsWith(".")){
+            extension = "." + extension;
+        }
+        return map.get(extension);
+    }
 }

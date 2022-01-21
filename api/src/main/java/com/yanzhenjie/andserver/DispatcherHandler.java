@@ -16,6 +16,9 @@
 package com.yanzhenjie.andserver;
 
 import android.content.Context;
+import android.os.Environment;
+import android.provider.ContactsContract;
+import android.renderscript.ScriptIntrinsicYuvToRGB;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -34,6 +37,12 @@ import com.yanzhenjie.andserver.framework.handler.HandlerAdapter;
 import com.yanzhenjie.andserver.framework.handler.RequestHandler;
 import com.yanzhenjie.andserver.framework.view.View;
 import com.yanzhenjie.andserver.framework.view.ViewResolver;
+import com.yanzhenjie.andserver.handler.DefaultHandler;
+import com.yanzhenjie.andserver.handler.DocDeleteHandler;
+import com.yanzhenjie.andserver.handler.DocListHandler;
+import com.yanzhenjie.andserver.handler.DocUploadHandler;
+import com.yanzhenjie.andserver.handler.DocViewHandler;
+import com.yanzhenjie.andserver.handler.HandlerFactory;
 import com.yanzhenjie.andserver.http.HttpContext;
 import com.yanzhenjie.andserver.http.HttpRequest;
 import com.yanzhenjie.andserver.http.HttpResponse;
@@ -53,15 +62,30 @@ import com.yanzhenjie.andserver.http.session.StandardSessionManager;
 import com.yanzhenjie.andserver.register.Register;
 import com.yanzhenjie.andserver.util.Assert;
 import com.yanzhenjie.andserver.util.MediaType;
+import com.yanzhenjie.andserver.util.RequestLineUtil;
+import com.yanzhenjie.andserver.util.ZipUtil;
 
 import org.apache.httpcore.protocol.HttpRequestHandler;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+
+import static com.yanzhenjie.andserver.http.HttpHeaders.LOCATION;
 
 /**
  * Created by Zhenjie Yan on 2018/8/8.
@@ -132,30 +156,310 @@ public class DispatcherHandler implements HttpRequestHandler, Register {
         handle(request, response);
     }
 
-    private void handle(HttpRequest request, HttpResponse response) {
-        StringBuffer stringBuffer = new StringBuffer();
-        //response.setContentType("text/html; charset=utf-8");
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write();
-        response.setStatus(200);
-        response.setBody(new StreamBody(, MediaType.TEXT_HTML));
-        printWriter.println("<!DOCTYPE html>");
-        printWriter.println("<html>");
-        printWriter.println("<head>");
-        printWriter.println("<meta charset=\"UTF-8\">");
-        printWriter.println("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
-        printWriter.println("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,Chrome=1\" />");
-        printWriter.println("<title>Index</title>");
-        printWriter.println("</head>");
-        printWriter.println("<body>");
-        printWriter.println("<h3>Active Handler:</h3>");
-        printWriter.println("  <ul>");
-        printWriter.print(stringBuffer.toString());
-        printWriter.println("  </ul>");
-        printWriter.println("</body>");
-        printWriter.println("</html>");
+    public void handle(HttpRequest request, HttpResponse response){
+        String requestURI = RequestLineUtil.getRequestURI(request, response);
+        String uri = request.getURI();
+        uri = uri.replace("scheme:", "");
+        System.out.println("original uri: " + uri);
+        String handlerName = HandlerFactory.getHandlerName(uri);
+        DispatcherHandler abstractHandler = HandlerFactory.getByHandlerName(handlerName);
+        if (uri.indexOf(handlerName) == -1) {
+            response.setHeader(LOCATION, requestURI + handlerName);
+            response.setStatus(StatusCode.SC_FOUND);
+            return;
+        }
+        abstractHandler.handle(request, response);
     }
 
+    private void handle4(HttpRequest request, HttpResponse response){
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        List<String> datas = new ArrayList<>();
+        try {
+            baos.write(prefix().getBytes());
+            datas.add(request.getPath());
+            datas.add(request.getURI());
+            baos.write(lines(datas).getBytes());
+            baos.write(ends().getBytes());
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            response.setStatus(200);
+            response.setBody(new StreamBody(bais, baos.toByteArray().length, MediaType.TEXT_HTML));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void registHandler(Context mContext) {
+//        HandlerFactory handlerFactory = new HandlerFactory();
+        DefaultHandler defaultHandler = new DefaultHandler(mContext);
+        DocListHandler docListHandler = new DocListHandler(mContext);
+        DocViewHandler docViewHandler = new DocViewHandler(mContext);
+        DocUploadHandler docUploadHandler = new DocUploadHandler(mContext);
+        DocDeleteHandler docDeleteHandler = new DocDeleteHandler(mContext);
+//        IcoHandler icoHandler = new IcoHandler();
+        HandlerFactory.register("default", (DispatcherHandler)defaultHandler);
+        HandlerFactory.register("doc-list", (DispatcherHandler)docListHandler);
+        HandlerFactory.register("doc-view", (DispatcherHandler)docViewHandler);
+        HandlerFactory.register("doc-upload", (DispatcherHandler)docUploadHandler);
+        HandlerFactory.register("doc-delete", (DispatcherHandler)docDeleteHandler);
+//        HandlerFactory.register("favicon.ico", (DispatcherHandler)icoHandler);
+    }
+
+    private void handle3(HttpRequest request, HttpResponse response) {
+        download();
+        String entry = "index-all.html";
+//        entry = "index.html";
+        List<File> files = files();
+        byte[] buffer = datas(files, entry);
+        try {
+            System.out.println(new String(buffer, "ISO-8859-1"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+        response.setStatus(200);
+        response.setBody(new StreamBody(bais, buffer.length, MediaType.TEXT_HTML));
+    }
+
+    public byte[] datas(List<File> files, String entryName){
+        byte[] buffer = new byte[1024];
+        int len = -1;
+        for(File f : files){
+            try {
+                ZipInputStream zis = new ZipInputStream(new FileInputStream(f));
+                ZipEntry entry = null;
+                while ((entry = zis.getNextEntry()) != null){
+                    if(entry.getName().equals(entryName)){
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        while((len = zis.read(buffer, 0, buffer.length)) != -1){
+                            baos.write(buffer, 0, len);
+                        }
+                        return baos.toByteArray();
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return new byte[]{};
+    }
+
+    private void handle2(HttpRequest request, HttpResponse response) {
+        StringBuffer stringBuffer = new StringBuffer();
+        //response.setContentType("text/html; charset=utf-8");
+
+//        FileInputStream fis = new FileInputStream()
+
+        fileMove();
+        List<File> files = files();
+
+        List<String> entries = docEntries(files);
+
+//        download();
+//        mkdir();
+
+        response.setStatus(200);
+        stringBuffer.append("<!DOCTYPE html>").append("\n");
+        stringBuffer.append("<html>").append("\n");
+        stringBuffer.append("<head>").append("\n");
+        stringBuffer.append("<meta charset=\"UTF-8\">").append("\n");
+        stringBuffer.append("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">").append("\n");
+        stringBuffer.append("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,Chrome=1\" />").append("\n");
+        stringBuffer.append("<title>Index</title>").append("\n");
+        stringBuffer.append("</head>").append("\n");
+        stringBuffer.append("<body>").append("\n");
+        stringBuffer.append("<h3>Active Handler:</h3>").append("\n");
+        stringBuffer.append("  <ul>").append("\n");
+        stringBuffer.append("    <li><a href=\"");
+        stringBuffer.append("/\" target=\"_self\">");
+//        stringBuffer.append(mContext.getDir("demo.txt", Context.MODE_PRIVATE).getAbsolutePath());
+//        stringBuffer.append("  <br/>").append("\n");
+//        stringBuffer.append(mContext.getFilesDir().getAbsolutePath());
+//        stringBuffer.append("  <br/>").append("\n");
+//        stringBuffer.append(mContext.getFilesDir().getAbsolutePath());
+//        stringBuffer.append("  <br/>").append("\n");
+//        stringBuffer.append(mContext.getObbDir().getAbsolutePath());
+        for(File f : files){
+            stringBuffer.append("  <br/>").append("\n");
+            stringBuffer.append(f.getAbsolutePath());
+        }
+
+//        stringBuffer.append("  <br/>").append("\n");
+//        stringBuffer.append(mContext.getExternalFilesDir("").getAbsolutePath());
+
+        stringBuffer.append("</a></li>\r\n");
+        stringBuffer.append("  </ul>").append("\n");
+        stringBuffer.append("</body>").append("\n");
+        stringBuffer.append("</html>").append("\n");
+        ByteArrayInputStream bais = new ByteArrayInputStream(stringBuffer.toString().getBytes());
+        response.setBody(new StreamBody(bais, stringBuffer.toString().getBytes().length, MediaType.TEXT_HTML));
+    }
+
+    public String prefix(){
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("<!DOCTYPE html>").append("\n");
+        stringBuffer.append("<html>").append("\n");
+        stringBuffer.append("<head>").append("\n");
+        stringBuffer.append("<meta charset=\"UTF-8\">").append("\n");
+        stringBuffer.append("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">").append("\n");
+        stringBuffer.append("<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,Chrome=1\" />").append("\n");
+        stringBuffer.append("<title>Index</title>").append("\n");
+        stringBuffer.append("</head>").append("\n");
+        stringBuffer.append("<body>").append("\n");
+        stringBuffer.append("<h3>Active Handler:</h3>").append("\n");
+        stringBuffer.append("  <ul>").append("\n");
+        return stringBuffer.toString();
+    }
+
+    public String ends(){
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("  </ul>").append("\n");
+        stringBuffer.append("</body>").append("\n");
+        stringBuffer.append("</html>").append("\n");
+        return stringBuffer.toString();
+    }
+
+    public String lines(List<String> datas){
+        StringBuffer stringBuffer = new StringBuffer();
+        for(String data : datas){
+            stringBuffer.append("<li>").append(data).append("</li>").append("\n");
+        }
+        return stringBuffer.toString();
+    }
+
+    public void fileMove(){
+//        mContext.getExternalFilesDir();
+        String fileName = "demo.txt";
+        String path = mContext.getObbDir().getAbsolutePath();
+        File file = new File(path, fileName);
+        String demo = "Hello files";
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(demo.getBytes(), 0, demo.getBytes().length);
+            fos.flush();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<File> files(){
+//        List<File> files = Arrays.asList(mContext.getObbDir().listFiles());
+        File files = mContext.getExternalFilesDir("");
+        String basePath = files.getParentFile().getAbsolutePath();
+        String manga = "manga";
+        File mPath = new File(basePath, manga);
+        List<File> fileList = Arrays.asList(mPath.listFiles());
+        return fileList;
+    }
+
+    public List<String> docEntries(List<File> files){
+        List<String> entries = new ArrayList<String>();
+            for(File f : files){
+                try {
+                    ZipInputStream zis = new ZipInputStream(new FileInputStream(f));
+                    ZipEntry entry = null;
+                    while ((entry = zis.getNextEntry()) != null){
+                        entries.add(entry.getName());
+                        System.out.println(entry.getName());
+                    }
+//                    FileInputStream fis = new FileInputStream(f);
+//                    byte[] buffer = new byte[1024];
+//                    int len = -1;
+//                    while ( (fis.read(buffer, 0, buffer.length)) != -1){
+//                        System.out.println(new String(buffer));
+//                    }
+                    //System.out.println(fis.available());
+        //            entries.addAll(ZipUtil.entryList2(f.getAbsolutePath()));
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        return entries;
+    }
+
+    public void mkdir(){
+        File files = mContext.getExternalFilesDir("");
+        String basePath = files.getParentFile().getAbsolutePath();
+        String manga = "manga";
+        File mPath = new File(basePath, manga);
+        mPath.mkdirs();
+        System.out.println(mPath.getAbsolutePath());
+
+        String a = mPath.getAbsolutePath();
+        String b = "b.txt";
+        try {
+            FileOutputStream fos = new FileOutputStream(new File(a, b));
+            fos.write(manga.getBytes(), 0, manga.getBytes().length);
+            fos.flush();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public String getMangaDir(){
+        File files = mContext.getExternalFilesDir("");
+        String basePath = files.getParentFile().getAbsolutePath();
+        String manga = "manga";
+        File mPath = new File(basePath, manga);
+        if(mPath.exists()) mPath.mkdirs();
+        return mPath.getAbsolutePath();
+    }
+
+    public void download(){
+        File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        System.out.println(file.getAbsoluteFile());
+        List<File> files = Arrays.asList(file.listFiles());
+        for(File f : files){
+            System.out.println(f.getAbsoluteFile());
+//            if(f.getName().endsWith("zip")){
+//                zipProc(f);
+//            }
+            if(f.getName().endsWith("zip")){
+                try {
+                    FileInputStream fis = new FileInputStream(f);
+                    moveToManga(fis, f.getName());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public void zipProc(File file){
+        List<String> entryList = ZipUtil.entryList2(file.getAbsolutePath());
+        for(String s : entryList){
+            System.out.println(s);
+        }
+        try {
+            ZipFile zipFile = ZipUtil.getZipFile(file.getAbsolutePath());
+            for(String s : entryList){
+                InputStream is = ZipUtil.getResource(zipFile, s);
+                moveToManga(is, s);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void moveToManga(InputStream is, String fileName) throws IOException {
+        String manga = getMangaDir();
+        File f = new File(manga, fileName);
+        FileOutputStream fos = new FileOutputStream(f);
+        byte[] buffer = new byte[1024];
+        int len = -1;
+        while((len = is.read(buffer, 0, buffer.length)) != -1){
+            fos.write(buffer, 0, len);
+        }
+        fos.flush();
+        fos.close();
+    }
 
 //    private void handle(HttpRequest request, HttpResponse response) {
 //        MultipartResolver multipartResolver = new StandardMultipartResolver();

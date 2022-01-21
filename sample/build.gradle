@@ -5,6 +5,10 @@ android {
     compileSdkVersion androidBuild.compileSdkVersion
     buildToolsVersion androidBuild.buildToolsVersion
 
+    lintOptions {
+        disable 'ValidFragment'
+    }
+
     defaultConfig {
         applicationId androidBuild.applicationId
         minSdkVersion androidBuild.sampleMinSdkVersion
@@ -29,6 +33,19 @@ dependencies {
     implementation deps.apache.lang
     implementation deps.apache.collections
 
+    implementation deps.apache.httpcore
+
     implementation deps.loading
     implementation deps.json
+    implementation deps.easyfloat
+
+    //implementation group: 'org.eclipse.jetty', name: 'jetty-webapp', version: '9.3.29.v20201019'
+    //implementation group: 'org.eclipse.jetty', name: 'jetty-deploy', version: '9.3.29.v20201019'
+    //implementation group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.3.29.v20201019'
+    //implementation 'org.eclipse.jetty:jetty-webapp:7.6.0.RC4'
+    //implementation 'org.eclipse.jetty:jetty-deploy:7.6.0.RC4'
+    //implementation 'org.eclipse.jetty:jetty-server:7.6.0.RC4'
+
+//    api fileTree(dir:"libs", includes: ['*.jar'])
+    //provided files ('D:/development_tools/JDK/Java/jre1.8.0_192/lib/rt.jar')
 }

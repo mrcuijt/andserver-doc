@@ -20,6 +20,7 @@ import android.content.Context;
 import com.yanzhenjie.andserver.ComponentRegister;
 import com.yanzhenjie.andserver.DispatcherHandler;
 import com.yanzhenjie.andserver.Server;
+import com.yanzhenjie.andserver.config.WebDocConfig;
 
 import org.apache.httpcore.protocol.HttpRequestHandler;
 
@@ -43,6 +44,8 @@ public class WebServer extends BasicServer<WebServer.Builder> {
 
     @Override
     protected HttpRequestHandler requestHandler() {
+        DispatcherHandler.registHandler(mContext);
+        WebDocConfig.setBasePath("manga");
         DispatcherHandler handler = new DispatcherHandler(mContext);
         ComponentRegister register = new ComponentRegister(mContext);
         try {

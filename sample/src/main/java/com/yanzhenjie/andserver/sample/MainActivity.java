@@ -26,6 +26,9 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.lzf.easyfloat.EasyFloat;
+import com.lzf.easyfloat.enums.ShowPattern;
+import com.yanzhenjie.andserver.sample.manager.SimpleServerManager;
 import com.yanzhenjie.loading.dialog.LoadingDialog;
 
 import java.util.LinkedList;
@@ -79,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         int id = v.getId();
+        System.out.println("View:" + v);
         switch (id) {
             case R.id.btn_start: {
                 showDialog();
@@ -88,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_stop: {
                 showDialog();
                 mServerManager.stopServer();
+                EasyFloat.with(this).setLayout(R.layout.activity_flow).setShowPattern(ShowPattern.ALL_TIME).show();
                 break;
             }
             case R.id.btn_browse: {
